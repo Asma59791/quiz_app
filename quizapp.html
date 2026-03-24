@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QUIZCORE — SYNTECXHUB</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d0d0d;--surface:#181818;--card:#222;--border:rgba(255,255,255,0.08);
+  --gold:#f5c842;--gold2:#ff9f1c;--teal:#00e5c3;--rose:#ff4d6d;
+  --text:#f5f5f0;--muted:#666;--correct:#00e5a0;--wrong:#ff4d6d;
+}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;overflow-x:hidden;position:relative;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 800px 600px at 50% -10%,rgba(245,200,66,0.08),transparent 60%),radial-gradient(ellipse 600px 600px at 90% 90%,rgba(0,229,195,0.06),transparent 60%);pointer-events:none;z-index:0;}
+
+/* Ticker tape top */
+.ticker{position:fixed;top:0;left:0;right:0;height:36px;background:var(--gold);overflow:hidden;z-index:100;display:flex;align-items:center;}
+.ticker-inner{display:flex;gap:0;animation:ticker 20s linear infinite;white-space:nowrap;}
+.ticker-item{font-family:'Bebas Neue',cursive;font-size:14px;color:#0d0d0d;padding:0 32px;letter-spacing:0.1em;}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+.wrap{position:relative;z-index:1;width:100%;max-width:640px;margin-top:36px;}
+
+/* === SCREENS === */
+.screen{display:none;animation:fadeIn 0.5s ease both;}
+.screen.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* === INTRO SCREEN === */
+.intro-screen{text-align:center;padding:60px 20px;}
+.quiz-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(245,200,66,0.1);border:1px solid rgba(245,200,66,0.3);border-radius:100px;padding:6px 18px;font-size:12px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);margin-bottom:28px;}
+.quiz-title{font-family:'Bebas Neue',cursive;font-size:clamp(70px,14vw,120px);line-height:0.9;letter-spacing:0.02em;margin-bottom:8px;}
+.quiz-title span{-webkit-text-stroke:2px var(--gold);color:transparent;}
+.quiz-sub{font-size:16px;color:var(--muted);font-weight:400;margin-bottom:48px;line-height:1.6;}
+.quiz-meta{display:flex;justify-content:center;gap:32px;margin-bottom:40px;}
+.meta-item{text-align:center;}
+.meta-num{font-family:'Bebas Neue',cursive;font-size:40px;color:var(--gold);line-height:1;}
+.meta-label{font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);font-weight:700;}
+.category-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:40px;}
+.cat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 12px;cursor:pointer;transition:all 0.3s;text-align:center;}
+.cat-card:hover,.cat-card.selected{border-color:var(--gold);background:rgba(245,200,66,0.07);transform:translateY(-3px);box-shadow:0 8px 24px rgba(245,200,66,0.12);}
+.cat-icon{font-size:28px;margin-bottom:8px;}
+.cat-name{font-size:13px;font-weight:700;letter-spacing:0.04em;}
+.start-btn{background:var(--gold);border:none;border-radius:16px;padding:18px 60px;font-family:'Nunito',sans-serif;font-size:17px;font-weight:900;color:#0d0d0d;cursor:pointer;transition:all 0.3s;letter-spacing:0.04em;text-transform:uppercase;}
+.start-btn:hover{background:var(--gold2);transform:translateY(-3px);box-shadow:0 12px 32px rgba(245,200,66,0.35);}
+
+/* === QUIZ SCREEN === */
+.quiz-screen{padding:20px 0;}
+.quiz-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;gap:16px;}
+.q-num{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:0.15em;color:var(--muted);}
+.q-num span{color:var(--gold);}
+.timer-wrap{display:flex;align-items:center;gap:10px;}
+.timer-ring{position:relative;width:52px;height:52px;}
+.timer-ring svg{transform:rotate(-90deg);}
+.timer-ring circle{fill:none;stroke:var(--border);stroke-width:3;}
+.timer-ring .prog{stroke:var(--gold);stroke-width:3;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke 0.3s;}
+.timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:18px;color:var(--gold);}
+.score-live{font-family:'Bebas Neue',cursive;font-size:22px;color:var(--teal);}
+.score-live span{font-size:12px;color:var(--muted);font-family:'Nunito',sans-serif;font-weight:700;letter-spacing:0.1em;}
+
+/* Progress bar */
+.progress-bar{height:4px;background:var(--border);border-radius:100px;margin-bottom:36px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:100px;transition:width 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+
+/* Question card */
+.question-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:36px;margin-bottom:24px;position:relative;overflow:hidden;}
+.question-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--gold2));}
+.q-category{font-size:11px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);margin-bottom:16px;}
+.q-text{font-size:20px;font-weight:700;line-height:1.5;color:var(--text);}
+
+/* Options */
+.options{display:flex;flex-direction:column;gap:12px;margin-bottom:24px;}
+.option{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 22px;cursor:pointer;transition:all 0.25s;display:flex;align-items:center;gap:16px;font-size:15px;font-weight:600;text-align:left;}
+.option-letter{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:16px;letter-spacing:0.05em;color:var(--muted);flex-shrink:0;transition:all 0.25s;}
+.option:hover:not(.locked){border-color:rgba(245,200,66,0.5);background:rgba(245,200,66,0.05);transform:translateX(6px);}
+.option:hover:not(.locked) .option-letter{background:var(--gold);color:#0d0d0d;border-color:var(--gold);}
+.option.correct{border-color:var(--correct);background:rgba(0,229,160,0.08);animation:correctPop 0.4s cubic-bezier(0.34,1.56,0.64,1);}
+.option.correct .option-letter{background:var(--correct);color:#0d0d0d;border-color:var(--correct);}
+.option.wrong{border-color:var(--wrong);background:rgba(255,77,109,0.08);animation:wrongShake 0.4s ease;}
+.option.wrong .option-letter{background:var(--wrong);color:#fff;border-color:var(--wrong);}
+.option.locked{cursor:default;pointer-events:none;}
+@keyframes correctPop{0%{transform:scale(1)}50%{transform:scale(1.02)}100%{transform:scale(1)}}
+@keyframes wrongShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* Explanation */
+.explanation{background:rgba(0,229,195,0.06);border:1px solid rgba(0,229,195,0.2);border-radius:14px;padding:16px 20px;font-size:14px;color:rgba(245,245,240,0.7);line-height:1.7;display:none;animation:fadeIn 0.3s ease;}
+.explanation.show{display:block;}
+.explanation strong{color:var(--teal);}
+
+/* Nav */
+.quiz-nav{display:flex;justify-content:space-between;align-items:center;}
+.nav-btn{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 28px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;color:var(--muted);cursor:pointer;transition:all 0.3s;letter-spacing:0.05em;text-transform:uppercase;}
+.nav-btn.primary{background:var(--gold);border-color:var(--gold);color:#0d0d0d;}
+.nav-btn.primary:hover{background:var(--gold2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(245,200,66,0.3);}
+.nav-btn:hover:not(.primary){border-color:var(--border);color:var(--text);}
+.streak{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;color:var(--gold2);}
+
+/* === RESULTS SCREEN === */
+.results-screen{text-align:center;padding:40px 20px;}
+.result-ring{width:160px;height:160px;margin:0 auto 28px;position:relative;}
+.result-ring svg{transform:rotate(-90deg);}
+.result-ring circle{fill:none;stroke:var(--border);stroke-width:8;}
+.result-ring .r-prog{stroke:var(--gold);stroke-width:8;stroke-linecap:round;stroke-dasharray:440;stroke-dashoffset:440;transition:stroke-dashoffset 1.5s cubic-bezier(0.34,1.56,0.64,1);}
+.result-pct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.result-pct-num{font-family:'Bebas Neue',cursive;font-size:48px;color:var(--gold);line-height:1;}
+.result-pct-label{font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:700;}
+.result-title{font-family:'Bebas Neue',cursive;font-size:52px;margin-bottom:8px;}
+.result-subtitle{font-size:15px;color:var(--muted);margin-bottom:36px;}
+.result-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:36px;}
+.r-stat{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 12px;text-align:center;}
+.r-stat-num{font-family:'Bebas Neue',cursive;font-size:36px;line-height:1;margin-bottom:4px;}
+.r-stat-label{font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:700;}
+.result-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.res-btn{border-radius:14px;padding:14px 32px;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all 0.3s;letter-spacing:0.05em;text-transform:uppercase;border:1px solid;}
+.res-btn.primary{background:var(--gold);border-color:var(--gold);color:#0d0d0d;}
+.res-btn.primary:hover{background:var(--gold2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(245,200,66,0.3);}
+.res-btn.ghost{background:transparent;border-color:var(--border);color:var(--muted);}
+.res-btn.ghost:hover{border-color:var(--teal);color:var(--teal);}
+
+/* Confetti */
+.confetti-piece{position:fixed;width:10px;height:10px;top:-10px;animation:confettiFall linear forwards;z-index:200;pointer-events:none;border-radius:2px;}
+@keyframes confettiFall{to{transform:translateY(110vh) rotate(720deg);opacity:0;}}
+</style>
+</head>
+<body>
+
+<div class="ticker">
+  <div class="ticker-inner" id="ticker">
+    <span class="ticker-item">⚡ QUIZCORE</span><span class="ticker-item">✦ TEST YOUR KNOWLEDGE</span><span class="ticker-item">★ FRONTEND DEVELOPMENT TASK 3</span><span class="ticker-item">⚡ SYNTECXHUB</span><span class="ticker-item">✦ SCORE BIG</span><span class="ticker-item">★ ARE YOU READY?</span>
+    <span class="ticker-item">⚡ QUIZCORE</span><span class="ticker-item">✦ TEST YOUR KNOWLEDGE</span><span class="ticker-item">★ FRONTEND DEVELOPMENT TASK 3</span><span class="ticker-item">⚡ SYNTECXHUB</span><span class="ticker-item">✦ SCORE BIG</span><span class="ticker-item">★ ARE YOU READY?</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- INTRO -->
+  <div class="screen active" id="screen-intro">
+    <div class="intro-screen">
+      <div class="quiz-badge">⚡ Interactive Quiz</div>
+      <div class="quiz-title">QUIZ<br><span>CORE</span></div>
+      <p class="quiz-sub">Test your frontend knowledge across multiple categories.<br>10 questions · timed · instant feedback.</p>
+      <div class="quiz-meta">
+        <div class="meta-item"><div class="meta-num">10</div><div class="meta-label">Questions</div></div>
+        <div class="meta-item"><div class="meta-num">20</div><div class="meta-label">Seconds Each</div></div>
+        <div class="meta-item"><div class="meta-num">3×</div><div class="meta-label">Score Multiplier</div></div>
+      </div>
+      <div class="category-grid" id="cat-grid"></div>
+      <button class="start-btn" onclick="startQuiz()">Start Quiz →</button>
+    </div>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="screen" id="screen-quiz">
+    <div class="quiz-screen">
+      <div class="quiz-topbar">
+        <div class="q-num">Q <span id="q-current">1</span> / <span id="q-total">10</span></div>
+        <div class="timer-wrap">
+          <div class="timer-ring">
+            <svg width="52" height="52" viewBox="0 0 52 52">
+              <circle cx="26" cy="26" r="22"/>
+              <circle class="prog" id="timer-ring" cx="26" cy="26" r="22" stroke-dasharray="138.2" stroke-dashoffset="0"/>
+            </svg>
+            <div class="timer-num" id="timer-num">20</div>
+          </div>
+        </div>
+        <div class="score-live"><span>SCORE </span><span id="live-score">0</span></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="q-progress" style="width:10%"></div></div>
+      <div class="question-card">
+        <div class="q-category" id="q-cat"></div>
+        <div class="q-text" id="q-text"></div>
+      </div>
+      <div class="options" id="options"></div>
+      <div class="explanation" id="explanation"></div>
+      <div class="quiz-nav">
+        <div class="streak" id="streak-display"></div>
+        <button class="nav-btn primary" id="next-btn" onclick="nextQuestion()" style="display:none">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="screen-results">
+    <div class="results-screen">
+      <div class="result-ring">
+        <svg width="160" height="160" viewBox="0 0 160 160">
+          <circle cx="80" cy="80" r="70"/>
+          <circle class="r-prog" id="result-ring-prog" cx="80" cy="80" r="70"/>
+        </svg>
+        <div class="result-pct">
+          <div class="result-pct-num" id="result-pct">0%</div>
+          <div class="result-pct-label">Score</div>
+        </div>
+      </div>
+      <div class="result-title" id="result-title">BRILLIANT!</div>
+      <div class="result-subtitle" id="result-sub">You crushed it.</div>
+      <div class="result-stats">
+        <div class="r-stat"><div class="r-stat-num" id="r-correct" style="color:var(--correct)">0</div><div class="r-stat-label">Correct</div></div>
+        <div class="r-stat"><div class="r-stat-num" id="r-wrong" style="color:var(--wrong)">0</div><div class="r-stat-label">Wrong</div></div>
+        <div class="r-stat"><div class="r-stat-num" id="r-points" style="color:var(--gold)">0</div><div class="r-stat-label">Points</div></div>
+      </div>
+      <div class="result-btns">
+        <button class="res-btn primary" onclick="restartQuiz()">Play Again</button>
+        <button class="res-btn ghost" onclick="showIntro()">Change Category</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const allQuestions = {
+  html: {name:'HTML',icon:'🧱',questions:[
+    {q:'Which HTML5 element is used for navigation links?',opts:['<nav>','<menu>','<links>','<header>'],ans:0,exp:'The <nav> element defines a set of navigation links and is a semantic HTML5 landmark element.'},
+    {q:'What attribute makes an input required before form submission?',opts:['mandatory','required','must','validate'],ans:1,exp:'The required attribute is a boolean attribute that specifies the input field must be filled out.'},
+    {q:'Which tag creates a hyperlink in HTML?',opts:['<link>','<href>','<a>','<url>'],ans:2,exp:'The <a> (anchor) tag is used to create hyperlinks. The href attribute specifies the URL.'},
+    {q:'What does DOCTYPE declaration do?',opts:['Styles the page','Links JS files','Defines HTML version','Creates a database'],ans:2,exp:'DOCTYPE tells the browser what version of HTML the page is using, enabling standards mode rendering.'},
+    {q:'Which is correct for a self-closing image tag?',opts:['<img src="x.png"></img>','<image src="x.png">','<img src="x.png"/>','<picture src="x.png">'],ans:2,exp:'The <img> element is void — it doesn\'t need a closing tag. The self-closing /> is optional in HTML5.'},
+  ]},
+  css: {name:'CSS',icon:'🎨',questions:[
+    {q:'Which CSS property controls the space between element border and content?',opts:['margin','spacing','padding','gap'],ans:2,exp:'Padding creates space between the element\'s content and its border. Margin creates space outside the border.'},
+    {q:'What does "em" unit represent in CSS?',opts:['Exact pixels','Parent element font size','Viewport height','Root font size'],ans:1,exp:'em is relative to the font-size of the parent element. So 2em = 2× the parent\'s font size.'},
+    {q:'Which property makes a flex container?',opts:['display:flex','position:flex','float:flex','layout:flex'],ans:0,exp:'Setting display: flex on a container activates Flexbox, making all direct children flex items.'},
+    {q:'How do you select elements with class "box"?',opts:['#box','box','.box','*box'],ans:2,exp:'Class selectors in CSS use a dot prefix. #box selects by ID, .box selects all elements with class="box".'},
+    {q:'Which value of position removes element from normal flow?',opts:['relative','static','sticky','absolute'],ans:3,exp:'Absolute positioning removes the element from the normal document flow and places it relative to its nearest positioned ancestor.'},
+  ]},
+  js: {name:'JavaScript',icon:'⚡',questions:[
+    {q:'Which method adds an item to the end of an array?',opts:['push()','pop()','shift()','append()'],ans:0,exp:'push() adds elements to the end of an array. pop() removes from end, shift() removes from start, unshift() adds to start.'},
+    {q:'What does === check in JavaScript?',opts:['Only type','Only value','Value and type','Neither'],ans:2,exp:'=== is the strict equality operator — it checks both value AND type. "5" === 5 returns false because types differ.'},
+    {q:'What is a closure in JavaScript?',opts:['A loop construct','A function accessing its outer scope','An object method','A CSS animation'],ans:1,exp:'A closure is a function that remembers and accesses variables from its outer lexical scope even after that scope has finished executing.'},
+    {q:'Which method converts JSON string to a JS object?',opts:['JSON.parse()','JSON.stringify()','JSON.convert()','JSON.decode()'],ans:0,exp:'JSON.parse() converts a JSON string to a JavaScript object. JSON.stringify() does the reverse.'},
+    {q:'What does localStorage.setItem() do?',opts:['Reads from storage','Deletes storage','Stores a key/value pair persistently','Clears all storage'],ans:2,exp:'localStorage.setItem(key, value) stores data in the browser that persists across sessions until explicitly cleared.'},
+  ]},
+  general: {name:'Web Dev',icon:'🌐',questions:[
+    {q:'What does API stand for?',opts:['Application Programming Interface','App Protocol Index','Advanced Program Interaction','Application Process Integration'],ans:0,exp:'API stands for Application Programming Interface — it allows different software systems to communicate with each other.'},
+    {q:'Which HTTP method is used to submit form data?',opts:['GET','POST','PUT','FETCH'],ans:1,exp:'POST is used to submit data that causes a change on the server. GET retrieves data and passes parameters in the URL.'},
+    {q:'What is responsive design?',opts:['Fast loading pages','Design adapting to screen sizes','Dark/light mode','Animated UI'],ans:1,exp:'Responsive web design ensures pages look and function well on all screen sizes — from mobile phones to large desktops.'},
+    {q:'Which tool is used for version control?',opts:['npm','Webpack','Git','Babel'],ans:2,exp:'Git is a distributed version control system that tracks changes in source code. GitHub, GitLab, and Bitbucket are Git hosting platforms.'},
+    {q:'What does DOM stand for?',opts:['Document Object Model','Data Object Method','Dynamic Order Manager','Direct Output Mode'],ans:0,exp:'The DOM (Document Object Model) is a tree-like programming interface representing the HTML document structure.'},
+  ]},
+};
+
+const categories = Object.keys(allQuestions);
+let selectedCat = 'js';
+let questions = [];
+let currentQ = 0;
+let score = 0;
+let correct = 0;
+let wrong = 0;
+let streak = 0;
+let maxStreak = 0;
+let timerInterval = null;
+let timeLeft = 20;
+let answered = false;
+const TIMER_MAX = 20;
+const CIRCUMFERENCE = 138.2;
+
+// Build category cards
+function buildCategoryGrid() {
+  const grid = document.getElementById('cat-grid');
+  grid.innerHTML = categories.map(k => `
+    <div class="cat-card ${k===selectedCat?'selected':''}" onclick="selectCat('${k}',this)">
+      <div class="cat-icon">${allQuestions[k].icon}</div>
+      <div class="cat-name">${allQuestions[k].name}</div>
+    </div>
+  `).join('');
+}
+
+function selectCat(k, el) {
+  selectedCat = k;
+  document.querySelectorAll('.cat-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+}
+
+function showIntro() { showScreen('intro'); buildCategoryGrid(); }
+
+function startQuiz() {
+  questions = [...allQuestions[selectedCat].questions].sort(()=>Math.random()-0.5);
+  currentQ = 0; score = 0; correct = 0; wrong = 0; streak = 0; maxStreak = 0;
+  document.getElementById('q-total').textContent = questions.length;
+  showScreen('quiz');
+  loadQuestion();
+}
+
+function loadQuestion() {
+  answered = false;
+  const q = questions[currentQ];
+  document.getElementById('q-current').textContent = currentQ+1;
+  document.getElementById('live-score').textContent = score;
+  document.getElementById('q-cat').textContent = `${allQuestions[selectedCat].icon} ${allQuestions[selectedCat].name}`;
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('q-progress').style.width = ((currentQ+1)/questions.length*100)+'%';
+  document.getElementById('explanation').classList.remove('show');
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('streak-display').textContent = streak>1?`🔥 ${streak} streak!`:'';
+
+  const letters = ['A','B','C','D'];
+  document.getElementById('options').innerHTML = q.opts.map((opt,i)=>`
+    <div class="option" onclick="answer(${i})" id="opt-${i}">
+      <div class="option-letter">${letters[i]}</div>
+      <span>${opt}</span>
+    </div>
+  `).join('');
+
+  startTimer();
+}
+
+function startTimer() {
+  timeLeft = TIMER_MAX;
+  clearInterval(timerInterval);
+  updateTimerUI();
+  timerInterval = setInterval(()=>{
+    timeLeft--;
+    updateTimerUI();
+    if(timeLeft<=0){clearInterval(timerInterval);timeExpired();}
+  },1000);
+}
+
+function updateTimerUI() {
+  const prog = document.getElementById('timer-ring');
+  const num = document.getElementById('timer-num');
+  const pct = timeLeft/TIMER_MAX;
+  prog.style.strokeDashoffset = CIRCUMFERENCE*(1-pct);
+  num.textContent = timeLeft;
+  prog.style.stroke = pct>0.5?'var(--gold)':pct>0.25?'var(--gold2)':'var(--rose)';
+  num.style.color = pct>0.5?'var(--gold)':pct>0.25?'var(--gold2)':'var(--rose)';
+}
+
+function timeExpired() {
+  if(answered)return;
+  answered = true;
+  streak = 0;
+  wrong++;
+  lockOptions();
+  showCorrect();
+  showExplanation();
+  document.getElementById('next-btn').style.display='block';
+}
+
+function answer(idx) {
+  if(answered)return;
+  answered = true;
+  clearInterval(timerInterval);
+  const q = questions[currentQ];
+  const isCorrect = idx === q.ans;
+  const opts = document.querySelectorAll('.option');
+  opts.forEach(o=>o.classList.add('locked'));
+
+  if(isCorrect){
+    opts[idx].classList.add('correct');
+    const points = Math.ceil(timeLeft/TIMER_MAX*100)+10;
+    score += points;
+    correct++;
+    streak++;
+    maxStreak = Math.max(maxStreak,streak);
+    if(streak>1) document.getElementById('streak-display').textContent=`🔥 ${streak} streak!`;
+  } else {
+    opts[idx].classList.add('wrong');
+    wrong++;
+    streak = 0;
+    showCorrect();
+  }
+  document.getElementById('live-score').textContent = score;
+  showExplanation();
+  document.getElementById('next-btn').style.display='block';
+}
+
+function lockOptions() { document.querySelectorAll('.option').forEach(o=>o.classList.add('locked')); }
+function showCorrect() {
+  const ans = questions[currentQ].ans;
+  document.getElementById('opt-'+ans).classList.add('correct');
+}
+function showExplanation() {
+  const exp = document.getElementById('explanation');
+  exp.innerHTML = `<strong>💡 Explanation:</strong> ${questions[currentQ].exp}`;
+  exp.classList.add('show');
+}
+
+function nextQuestion() {
+  currentQ++;
+  if(currentQ>=questions.length){showResults();}
+  else{loadQuestion();}
+}
+
+function showResults() {
+  showScreen('results');
+  const pct = Math.round(correct/questions.length*100);
+  const titles = [[0,'KEEP TRYING 💪','Review the fundamentals and try again!'],[50,'NOT BAD! 👍','You know the basics. Keep learning!'],[70,'GREAT JOB! 🎯','Solid knowledge — you\'re getting there!'],[90,'EXCELLENT! 🏆','Outstanding performance!']];
+  let title='BRILLIANT! 🌟', sub='Perfect score! You\'re a frontend master!';
+  for(const [min,t,s] of titles){if(pct>=min){title=t;sub=s;}}
+  document.getElementById('result-title').textContent=title;
+  document.getElementById('result-sub').textContent=sub;
+  document.getElementById('r-correct').textContent=correct;
+  document.getElementById('r-wrong').textContent=wrong;
+  document.getElementById('r-points').textContent=score;
+
+  // Animate ring
+  setTimeout(()=>{
+    document.getElementById('result-pct').textContent=pct+'%';
+    const prog = document.getElementById('result-ring-prog');
+    const c=2*Math.PI*70;
+    prog.style.strokeDasharray=c;
+    prog.style.strokeDashoffset=c-(c*pct/100);
+    prog.style.stroke=pct>=70?'var(--gold)':pct>=40?'var(--gold2)':'var(--rose)';
+  },200);
+
+  if(pct>=70) launchConfetti();
+}
+
+function restartQuiz() { startQuiz(); }
+
+function launchConfetti() {
+  const colors=['#f5c842','#ff9f1c','#00e5c3','#ff4d6d','#ffffff'];
+  for(let i=0;i<80;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='confetti-piece';
+      el.style.cssText=`left:${Math.random()*100}vw;background:${colors[Math.floor(Math.random()*colors.length)]};animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*0.5}s;transform:rotate(${Math.random()*360}deg);width:${6+Math.random()*10}px;height:${6+Math.random()*10}px;`;
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),3500);
+    },i*30);
+  }
+}
+
+buildCategoryGrid();
+</script>
+</body>
+</html>
